@@ -1,0 +1,6 @@
+spring:
+  kafka:
+    streams:
+      application-id: fraud-detection-streams-test
+      state-dir: ./target/kafka-streams-test-logs
+    bootstrap-servers: localhost:9092

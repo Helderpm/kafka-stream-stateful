@@ -47,7 +47,7 @@ public class TransactionWindowStream {
                     }
                 })
                 .to("user-txn-counts", Produced.with(
-                        WindowedSerdes.timeWindowedSerdeFrom(String.class),
+                        WindowedSerdes.timeWindowedSerdeFrom(String.class, 10000L),
                         Serdes.Long()
                 ));
         return stream;
