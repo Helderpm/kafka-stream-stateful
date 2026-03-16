@@ -8,12 +8,11 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.EnableKafkaStreams;
+import org.apache.kafka.streams.KeyValue;
 
 import java.time.Duration;
 
 @Configuration
-@EnableKafkaStreams
 @Slf4j
 public class TransactionWindowStream {
 
@@ -46,10 +45,13 @@ public class TransactionWindowStream {
                         log.warn("🚨 FRAUD ALERT: User={} made {} transactions within 10 seconds!", user, count);
                     }
                 })
-                .to("user-txn-counts", Produced.with(
-                        WindowedSerdes.timeWindowedSerdeFrom(String.class, 10000L),
-                        Serdes.Long()
-                ));
+                .filter((windowedKey, count) -> count > 3)
+                .map((windowedKey, count) -> KeyValue.pair(
+                        windowedKey.key(),
+                        "FRAUD ALERT: User " + windowedKey.key() + " made " + count + " transactions within 10 seconds"
+                ))
+                .to("txn-fraud-alert", Produced.with(Serdes.String(), Serdes.String()));
+
         return stream;
 
     }

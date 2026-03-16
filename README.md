@@ -43,15 +43,18 @@ This project demonstrates a real-time fraud detection system using Apache Kafka 
 - **Stateful Operations**: Maintains user transaction counts
 
 ### 3. Fraud Detection Logic
-- **High-Value Detection**: Monitors transactions above thresholds
 - **Frequency Analysis**: Detects users with >3 transactions in 10 seconds
-- **Real-time Alerts**: Logs fraud warnings with detailed information
+- **Real-time Alerts**: Sends fraud warnings to `txn-fraud-alert` topic
+- **Alert Storage**: Maintains in-memory list of recent fraud alerts (max 100)
+- **REST API Access**: Provides HTTP endpoint to retrieve fraud alerts
 
 ### 4. Data Flow
 1. Transactions published to `transactions` topic
 2. Stream processors consume and analyze in real-time
-3. Results sent to output topics for monitoring
-4. State stores maintain aggregation data
+3. Fraud alerts sent to `txn-fraud-alert` topic
+4. Kafka consumer listens for alerts and stores in memory
+5. REST API provides access to stored fraud alerts
+6. State stores maintain aggregation data
 
 ## Kafka Integration
 
@@ -76,7 +79,8 @@ This project demonstrates a real-time fraud detection system using Apache Kafka 
 
 ### Prerequisites
 - Java 21+
-- Apache Kafka running on localhost:9092
+- Docker Desktop installed and running
+- Docker Compose available
 - Maven 3.6+
 
 ### Build Commands
@@ -94,7 +98,48 @@ mvn clean package
 mvn clean package -DskipTests
 ```
 
-### Running the Application
+### Docker Compose Deployment (Recommended)
+
+#### Quick Start
+```bash
+# Navigate to docker directory
+cd docker
+
+# Start all services (Kafka + Zookeeper + Application)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f fraud-detection-app
+
+# Stop services
+docker-compose down
+```
+
+#### Services Included
+- **Zookeeper**: Port 2181 - Kafka cluster coordination
+- **Kafka**: Port 9092 - Message broker with auto-topic creation
+- **Fraud Detection App**: Port 8080 - Spring Boot application
+
+#### Access Points
+- **REST API**: http://localhost:8080
+- **Health Check**: http://localhost:8080/actuator/health
+- **OpenAPI Docs**: http://localhost:8080/swagger-ui.html
+
+#### Development Workflow
+```bash
+# Build and start
+docker-compose up --build
+
+# Rebuild application after changes
+docker-compose up --build fraud-detection-app
+
+# Clean up everything
+docker-compose down -v --remove-orphans
+```
+
+### Local Development Setup
+
+#### Manual Kafka Setup
 ```bash
 # Start Kafka (if not running)
 bin/kafka-server-start.sh config/server.properties
@@ -110,12 +155,12 @@ mvn spring-boot:run
 java -jar target/fraud-detection-system-0.0.1-SNAPSHOT.jar
 ```
 
-### Docker Deployment
+#### Single Docker Image
 ```bash
 # Build Docker image
 mvn spring-boot:build-image
 
-# Run with Docker
+# Run with Docker (requires external Kafka)
 docker run -p 8080:8080 fraud-detection-system:0.0.1-SNAPSHOT
 ```
 
@@ -125,6 +170,21 @@ docker run -p 8080:8080 fraud-detection-system:0.0.1-SNAPSHOT
 ```bash
 curl -X POST http://localhost:8080/api/transactions/publish
 ```
+
+### Get Fraud Alerts
+```bash
+curl -X GET http://localhost:8080/api/transactions/fraud-alerts
+```
+
+**Response:**
+```json
+[
+  "FRAUD ALERT: User U1 made 4 transactions within 10 seconds",
+  "FRAUD ALERT: User U2 made 5 transactions within 10 seconds"
+]
+```
+
+**Note:** Returns empty array `[]` when no fraud alerts are detected.
 
 ### Sample Transaction Data
 The system includes sample transaction data in `src/main/resources/transactions.json` with various scenarios:
@@ -189,6 +249,27 @@ src/main/java/com/javatechie/
 - Unit tests for stream processing
 - Integration tests with embedded Kafka
 - Transaction serialization tests
+
+### Testing Fraud Detection
+```bash
+# 1. Start the application
+mvn spring-boot:run
+
+# 2. Publish transactions multiple times quickly (within 10 seconds)
+curl -X POST http://localhost:8080/api/transactions/publish
+curl -X POST http://localhost:8080/api/transactions/publish
+curl -X POST http://localhost:8080/api/transactions/publish
+curl -X POST http://localhost:8080/api/transactions/publish
+
+# 3. Check for fraud alerts
+curl -X GET http://localhost:8080/api/transactions/fraud-alerts
+```
+
+### Troubleshooting
+- **Empty fraud alerts**: Ensure consumer configuration is properly set in `application.yml`
+- **No alerts generated**: Publish at least 4 transactions for the same user within 10 seconds
+- **Kafka connection issues**: Verify Kafka is running on `localhost:9092`
+- **Topic not found**: Check if `txn-fraud-alert` topic exists: `kafka-topics.bat --list --bootstrap-server localhost:9092`
 
 ## Production Considerations
 

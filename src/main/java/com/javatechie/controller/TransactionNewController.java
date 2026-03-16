@@ -7,6 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.Arrays;
 import java.util.List;
@@ -14,6 +20,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Tag(name = "Transaction Generator", description = "APIs for generating random test transactions")
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -23,6 +30,13 @@ public class TransactionNewController {
     private static final String TOPIC = "transactions";
     private final Random random = new Random();
 
+    @Operation(summary = "Generate random transactions", description = "Generates 15 random transactions with varying amounts, users, locations, and types. Transactions are published to Kafka with 1-second delays to spread across time windows for testing fraud detection.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Random transactions generated and published successfully", 
+                   content = @Content(mediaType = "application/json", 
+                   schema = @Schema(implementation = String.class))),
+        @ApiResponse(responseCode = "500", description = "Internal server error during transaction generation")
+    })
     @GetMapping("/produceTransactions")
     public String produceTransactions() throws InterruptedException {
         log.info("🚀 Starting to publish random transactions...");

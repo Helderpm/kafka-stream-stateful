@@ -1,0 +1,16 @@
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.md
+
+# Docker volumes and logs
+docker-data/
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
